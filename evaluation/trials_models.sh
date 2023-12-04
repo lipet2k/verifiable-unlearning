@@ -7,7 +7,7 @@ source ~/.bashrc
     --trial_name models/linear_regression \
     --technique retraining --mode train \
     --no_samples_D_prev 0 \
-    --no_samples_D_plus 100 \
+    --no_samples_D_plus 1 \
     --no_samples_U_prev 0 \
     --no_samples_U_plus 0 \
     --dataset_name synthetic_10 \

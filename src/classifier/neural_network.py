@@ -136,6 +136,22 @@ class NeuralNetwork:
                 (y_pred <  thresh and y == 0):
                 no_correct += 1
         return no_correct / len(dataset.X_test)
+    
+    def predict(self, x, config):
+        a_0 = np.zeros(self.no_neurons).tolist()
+        a_1 = np.zeros(1).tolist()
+        z_0 = np.zeros(self.no_neurons).tolist()
+        z_1 = np.zeros(1).tolist()
+        for j in range(len(self.w_0)):
+            z_0[j] = np.sum([ self.remove_shift(x_i*w_i, config['precision']) 
+                                for x_i, w_i in zip(x, self.w_0[j]) ]) + self.b_0[j]
+            a_0[j] = self.sigmoid(z_0[j], config['precision'])
+        # layer 1
+        z_1[0] = np.sum([ self.remove_shift(a_i*w_i, config['precision'])  
+                            for a_i, w_i in zip(a_0, self.w_1[0]) ]) + self.b_1[0]
+        a_1[0] = self.sigmoid(z_1[0], config['precision'])
+        y_pred = a_1[0]
+        return y_pred
 
     def train(self, config, dataset, weights):
 

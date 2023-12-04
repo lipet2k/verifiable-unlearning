@@ -31,13 +31,13 @@ def parse_and_group_arguments(parser):
 
 def setup_working_dir(trials_dir, trial_name, overwrite=False):
     working_dir = trials_dir.joinpath(trial_name)
-    if working_dir.is_dir():
-        print(f'[!] Working dir already exist: {working_dir}')
-        if overwrite or input("    Enter yes to overwrite: ") == 'yes':
-            print(f'    -> removed dir')
-            shutil.rmtree(working_dir)
-        else:
-            exit()
+    # if working_dir.is_dir():
+    #     print(f'[!] Working dir already exist: {working_dir}')
+    #     if overwrite or input("    Enter yes to overwrite: ") == 'yes':
+    #         print(f'    -> removed dir')
+    #         shutil.rmtree(working_dir)
+    #     else:
+    #         exit()
     working_dir.mkdir(parents=True)
     return working_dir
 

@@ -1,5 +1,7 @@
 FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt update &&\
     apt upgrade -y
 
@@ -41,3 +43,7 @@ WORKDIR /root/verifiable-unlearning
 RUN pip install -r requirements.txt
 
 RUN ln -s /root/circ/third_party /root/verifiable-unlearning/third_party
+
+EXPOSE 5000
+
+CMD ["python3", "src/main.py", "--host=0.0.0.0"]

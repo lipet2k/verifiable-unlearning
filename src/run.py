@@ -157,14 +157,14 @@ if __name__ == "__main__":
     proof_config.add_argument('--circ_path', type=Path, default=Path('/root/circ'))
     proof_config.add_argument('--proof_system', type=str, default="nizk")
     proof_config.add_argument('--circuit_dir', type=Path, default=Path('/root/verifiable-unlearning/templates'))
-    proof_config.add_argument('--epochs', type=int, default=3)
+    proof_config.add_argument('--epochs', type=int, default=1)
     proof_config.add_argument('--lr', type=float, default=0.01)
     proof_config.add_argument('--classifier', type=str, default='linear_regression')
     proof_config.add_argument('--precision', type=int, default=1e5)
     proof_config.add_argument('--debug', action="store_false")
     proof_config.add_argument('--model_seed', type=int, default=2023)
 
-    proof_config.add_argument('--unlearning_epochs', type=int, default=3)
+    proof_config.add_argument('--unlearning_epochs', type=int, default=1)
     proof_config.add_argument('--unlearining_lr', type=float, default=0.01)
 
     args = parse_and_group_arguments(parser)

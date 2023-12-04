@@ -15,7 +15,7 @@ def twos_complement(x):
 
 class CirC:
 
-    def __init__(self, circ_path, debug=False):
+    def __init__(self, circ_path, debug=True):
         self.debug = debug
         self.circ_path = circ_path
 
@@ -40,6 +40,7 @@ class CirC:
         cmd = f'{self.circ_path.joinpath("target/release/examples/unlearning")} circuit.zok nizk --pin circuit.pin --vin circuit.vin'
         stdout = self.run(cmd, working_dir)
         working_dir.joinpath('circ.log.txt').write_text(stdout)
+        return stdout
 
     def spartan_snark(self, params, working_dir):
         working_dir.mkdir(exist_ok=True, parents=True)

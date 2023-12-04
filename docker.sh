@@ -1,5 +1,10 @@
 #!/bin/bash
 
+run()
+{
+    docker run -p 5000:5000 verifiable-unlearning
+}
+
 build()
 {
     docker build -t verifiable-unlearning .
@@ -17,10 +22,11 @@ evaluation()
 
 print_usage() 
 {
-    echo "Choose: docker.sh {build|shell|eval}"
+    echo "Choose: docker.sh {build|shell|eval|run}"
     echo "    build - Build the container"
     echo "    shell - Spawn a shell inside the container"
     echo "    eval  - Run evaluation in the container"
+    echo "    run   - Run the server"
 }
 
 if [[ $1 == "" ]]; then
@@ -32,6 +38,8 @@ elif [[ $1 == "shell" ]]; then
     shell 
 elif [[ $1 == "eval" ]]; then
     evaluation
+elif [[ $1 == "run" ]]; then
+    run
 else 
     echo "Argument not recognized!"
     print_usage
