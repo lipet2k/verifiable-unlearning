@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_cors import cross_origin
+from flask_cors import cross_origin, CORS
 from sisa import SISA
 from dataset import Dataset
 from copy import deepcopy
@@ -13,6 +13,7 @@ from loguru import logger as log
 import shutil
 
 app = Flask(__name__)
+CORS(app)
 
 perm_sisa = SISA()
 X, Y = Dataset.from_pmlb_shard('analcatdata_creditscore')
@@ -60,22 +61,20 @@ def classify():
 @app.route('/unlearn', methods=['POST'])
 @cross_origin()
 def unlearn():
-    if request.method == 'POST':
-        model_id_1 = request.form.get('model_id_1')
-        datapoint_idx_1 = request.form.get('datapoint_idx_1')
+    model_id_1 = request.args.get('model_id_1')
+    datapoint_idx_1 = request.args.get('datapoint_idx_1')
 
-        ids = [
-            {'model_id': model_id_1, 'datapoint_idx': datapoint_idx_1},
-        ]
-        
-        proof_params = sisa.unlearn(ids)
+    ids = [
+        {'model_id': model_id_1, 'datapoint_idx': datapoint_idx_1},
+    ]
+    
+    proof_params = sisa.unlearn(ids)
 
-        global global_proof_params
-        global_proof_params = proof_params
+    global global_proof_params
+    global_proof_params = proof_params
 
-        return jsonify(proof_params), 200
-    else:
-        return "Method not allowed", 405
+    return jsonify(proof_params), 200
+
 
 @app.route('/reset', methods=['POST'])
 @cross_origin()
@@ -83,23 +82,50 @@ def reset():
     global sisa
     sisa = deepcopy(perm_sisa)
 
-@app.route('/verify', methods=["POST"])
+    global global_proof_params
+    global_proof_params = []
+    return jsonify("Reset successful"), 200
+
+@app.route('/verify')
 @cross_origin()
 def verify():
-    if request.method == 'POST':
-        proof_src = request.form.get('proof_src')
-        working_dir.joinpath('circuit.zok').write_text(proof_src)
-        circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
-        shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
+    if request.method == 'GET':
 
         global global_proof_params
         for proof_param in global_proof_params:
             params = proof_param['params']
+            proof_src = proof_param['proof']
             try:
+                working_dir.joinpath('circuit.zok').write_text(proof_src)
+                circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
+                shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
                 stdout = circ.spartan_nizk(params, working_dir)
                 return stdout, 200
             except:
                 pass
+
+        return "Verification failed", 400
+
+    else:
+        return "Method not allowed", 405
+    
+@app.route('/verify_one')
+@cross_origin()
+def verify_one():
+    if request.method == 'GET':
+
+        global global_proof_params
+        proof_param = global_proof_params[0]
+        params = proof_param['params']
+        proof_src = proof_param['proof']
+        try:
+            working_dir.joinpath('circuit.zok').write_text(proof_src)
+            circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
+            shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
+            stdout = circ.spartan_nizk(params, working_dir)
+            return stdout, 200
+        except:
+            pass
 
         return "Verification failed", 400
 
