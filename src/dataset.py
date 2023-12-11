@@ -115,7 +115,8 @@ class Dataset:
     def from_pmlb_shard(dataset_name):
         X, Y = fetch_data(dataset_name, return_X_y=True, local_cache_dir=Path.home().joinpath('verifiable-unlearning/data').as_posix())
         # normalize X
-        X = preprocessing.StandardScaler().fit(X).transform(X)
+        scaler = preprocessing.StandardScaler().fit(X)
+        X = scaler.transform(X)
         # normalize Y
         assert len(set(Y)) == 2, Y
         if min(Y) == 0 and max(Y) == 2:
@@ -126,7 +127,7 @@ class Dataset:
         assert Y.min() == 0 and Y.max() == 1, Y
         # split
         X, X_test, Y, Y_test = train_test_split(X, Y, test_size=0.2)
-        return X, Y  
+        return X, Y, scaler
 
     @staticmethod
     def make_classification(no_features):

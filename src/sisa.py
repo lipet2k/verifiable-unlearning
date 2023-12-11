@@ -9,7 +9,7 @@ from loguru import logger as log
 from utils import setup_working_dir
 from pathlib import Path
 
-NUM_SHARDS = 3
+NUM_SHARDS = 6
 
 class SISA_Model:
     def __init__(self):
@@ -20,6 +20,7 @@ class SISA_Model:
 
     def train(self, config, X, y):
         # initialize weights
+        log.info('EPOCH 0')
         dataset = Dataset(train=list(zip(X[0:1], y[0:1]))).shift(1e5)
         self.weights = self.model.init_model(config, dataset.no_features)
         self.model.train(config, dataset, self.weights)
@@ -28,6 +29,7 @@ class SISA_Model:
         # train model
         if len(X) > 2:
             for i in range(2, len(X)):
+                log.info(f'EPOCH {i-1}')
                 dataset = Dataset(train=list(zip(X[0:i], y[0:i]))).shift(1e5)
                 self.weights = self.model.weights
                 self.model.train(config, dataset, self.weights)
@@ -95,8 +97,6 @@ class SISA:
 
         for i in range(NUM_SHARDS):
             self.shards.append({"X": sharded_X[i], "y": sharded_y[i]})
-            # dataset = Dataset(train=list(zip(sharded_X[i], sharded_y[i]))).shift(1e5)
-            # self.shards.append(dataset)
 
         for i, model in enumerate(self.models):
             model.train(self.config, self.shards[i]['X'], self.shards[i]['y'])
@@ -123,23 +123,29 @@ class SISA:
 
         return proof_params
 
-    def predict(self, datapoint):
-        predictions = {}
+    def predict(self, datapoint, scaler):
+        tmp = Dataset(train=[])
+        dpt = scaler.transform([datapoint])[0]
+
+        X_sh = [ tmp.add_shift(x_i, self.config['precision']) for x_i in dpt]
+        log.info(X_sh)
+        predictions = {'0': 0, '1': 0}
         list_pred = []
+        
         for sisa_model in self.models:
-            prediction = sisa_model.predict(datapoint, self.config)
+            
+            prediction = sisa_model.predict(X_sh, self.config)
             list_pred.append(prediction)
+
             thresh = sisa_model.model.add_shift(0.5, self.config['precision'])
-            if prediction in predictions:
-                if prediction <= thresh:
-                    predictions['0'] += 1
-                else:
-                    predictions['1'] += 1
+            
+            if prediction < thresh:
+                predictions['0'] += 1
             else:
-                if prediction <= thresh:
-                    predictions['0'] = 1
-                else:
-                    predictions['1'] = 1
+                predictions['1'] += 1
+        
+        log.info(thresh)
+        log.info(list_pred)
         return max(predictions, key=predictions.get), list_pred
 
     def examples(self):

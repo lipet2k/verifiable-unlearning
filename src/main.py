@@ -16,7 +16,7 @@ app = Flask(__name__)
 CORS(app)
 
 perm_sisa = SISA()
-X, Y = Dataset.from_pmlb_shard('analcatdata_creditscore')
+X, Y, scaler = Dataset.from_pmlb_shard('analcatdata_creditscore')
 perm_sisa.train(X, Y)
 
 sisa = deepcopy(perm_sisa)
@@ -53,7 +53,7 @@ def classify():
 
         data = [age, income, credit_ex, home_ownership, employment, reports]
         data = [float(x) for x in data]
-        prediction, list_pred = sisa.predict(data)
+        prediction, list_pred = sisa.predict(data, scaler)
         return jsonify({'prediction': prediction, 'list_pred': list_pred }), 200
     else:
         return "Method not allowed", 405
@@ -115,6 +115,8 @@ def verify_one():
     if request.method == 'GET':
 
         global global_proof_params
+        if len(global_proof_params) == 0:
+            return "Verification Not Available", 400
         proof_param = global_proof_params[0]
         params = proof_param['params']
         proof_src = proof_param['proof']
