@@ -132,7 +132,6 @@ class NeuralNetwork:
                                 for a_i, w_i in zip(a_0, self.w_1[0]) ]) + self.b_1[0]
             a_1[0] = self.sigmoid(z_1[0], config['precision'])
             y_pred = a_1[0]
-            log.info(y_pred)
             thresh = self.add_shift(0.5, config['precision'])
             if (y_pred >= thresh and y == config['precision']) or \
                 (y_pred <  thresh and y == 0):

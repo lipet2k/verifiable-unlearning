@@ -2,6 +2,8 @@ import json
 
 from hashs.utils import hash_dataset, hash_list
 from jinja2 import Template
+from loguru import logger as log
+from dataset import Dataset
 
 def circuit_checkpoint_retraining(config, model, D_prev, U_prev, D_plus):
 

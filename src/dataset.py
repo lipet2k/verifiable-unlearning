@@ -44,7 +44,9 @@ class Dataset:
     #         self.X, self.Y, self.X_test, self.Y_test = X, Y, X_test, Y_test
 
     def __str__(self):
-        return f'Dataset(no_samples={len(self.X)}+{len(self.X_test)}, no_features={len(self.X[0])})'
+        if len(self.X) > 0:
+            return f'Dataset(no_samples={len(self.X)}+{len(self.X_test)}, no_features={len(self.X[0])})'
+        return f'Dataset(no_samples={len(self.X)}+{len(self.X_test)}, no_features=0)'
 
     def __len__(self):
         return len(self.X)

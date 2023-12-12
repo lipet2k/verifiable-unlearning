@@ -1,5 +1,5 @@
 from classifier.neural_network import NeuralNetwork
-from techniques.retraining import circuit_checkpoint_retraining
+from techniques.retraining import circuit_checkpoint_retraining, circuit_train_retraining
 from checkpoints import CheckpointManager
 from pathlib import Path
 from dataset import Dataset
@@ -37,7 +37,7 @@ class SISA_Model:
 
     def retrain(self, config, min_idx, D_prev, U_prev, D_plus):
         self.model = self.checkpoint_manager.getCheckpoint(min_idx).model
-        proof_src, params = circuit_checkpoint_retraining(config, self.model, D_prev, U_prev, D_plus)
+        proof_src, params = circuit_train_retraining(config, self.model, D_prev, U_prev, D_plus)
 
         return {'proof': proof_src, 'params': params}
 
@@ -51,7 +51,7 @@ class SISA_Model:
             deleted_point, dataset = self.checkpoint_manager.delete_points_from_dataset(idxs=[idx], dataset=dataset)
             deleted_prev.append(deleted_point)
         for i in range(min_idx, dataset.size):
-            train_to_index = list(zip(dataset.X[min_idx - 1:i], dataset.Y[min_idx - 1:i]))
+            train_to_index = list(zip([dataset.X[i]], [dataset.Y[i]]))
             datasets.append(Dataset(train=train_to_index))
         self.checkpoint_manager.delete_checkpoints_after(min_idx)
 
@@ -59,7 +59,7 @@ class SISA_Model:
         proof_params = []
         while len(datasets) > 1:
             X, y = zip(*deleted_prev)
-            U_prev = Dataset(train=list(zip(X, y))).shift(1e5)
+            U_prev = Dataset(train=list(zip(X, y)))
             D_plus = datasets.pop()
             proof_param = self.retrain(config, min_idx, foundation_dataset, U_prev, D_plus)
             proof_params.append(proof_param)
@@ -70,25 +70,10 @@ class SISA_Model:
         return self.model.predict(datapoint, config)
 
 class SISA:
-    def __init__(self):
+    def __init__(self, config):
         self.models = [SISA_Model() for _ in range(NUM_SHARDS)]
         self.shards = []
-        output_dir = Path("/root/verifiable-unlearning/outputs")
-        working_dir = setup_working_dir(output_dir, str(uuid.uuid4()), overwrite=False)
-        self.config = {
-            "circ_path": Path('/root/circ'),
-            "proof_system": "nizk",
-            "circuit_dir": Path('/root/verifiable-unlearning/templates'),
-            "epochs": 1,
-            "lr": 0.01,
-            "classifier": "neural_network_2",
-            "precision": 1e5,
-            "debug": False,
-            "model_seed": 2023,
-            "unlearning_epochs": 1,
-            "unlearining_lr": 0.01,
-            "working_dir": working_dir,
-        }
+        self.config = config
 
     def train(self, X, y):
         shard_size = len(X) // NUM_SHARDS
@@ -128,7 +113,6 @@ class SISA:
         dpt = scaler.transform([datapoint])[0]
 
         X_sh = [ tmp.add_shift(x_i, self.config['precision']) for x_i in dpt]
-        log.info(X_sh)
         predictions = {'0': 0, '1': 0}
         list_pred = []
         
@@ -143,9 +127,7 @@ class SISA:
                 predictions['0'] += 1
             else:
                 predictions['1'] += 1
-        
-        log.info(thresh)
-        log.info(list_pred)
+
         return max(predictions, key=predictions.get), list_pred
 
     def examples(self):

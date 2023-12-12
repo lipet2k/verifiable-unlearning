@@ -6,6 +6,7 @@ import binascii
 import struct
 import json
 from pathlib import Path
+from loguru import logger as log
 
 def to_hex_str(x, no_bytes):
     return binascii.hexlify(bytes.fromhex(("0"*no_bytes+ hex(x)[2:])[-no_bytes:])).decode()
@@ -21,20 +22,21 @@ class CirC:
 
     def run(self, cmd, cwd):
         if self.debug:
-            print(f'[+] {cmd}')
+            log.info(f'[+] {cmd}')
             import os
             os.environ['RUST_BACKTRACE'] = "1"
         p = run(cmd, cwd=cwd, shell=True, capture_output=True)
         if p.returncode != 0:
-            print(p.stdout.decode())
-            print(p.stderr.decode())
+            log.info(p.stdout.decode())
+            log.info(p.stderr.decode())
             raise RuntimeError()
         if self.debug:
-            print(p.stdout.decode())
-            print(p.stderr.decode())
+            log.info(p.stdout.decode())
+            log.info(p.stderr.decode())
         return p.stdout.decode()
 
     def spartan_nizk(self, params, working_dir):
+
         working_dir.mkdir(exist_ok=True, parents=True)
         self._make_params(params, working_dir)
         cmd = f'{self.circ_path.joinpath("target/release/examples/unlearning")} circuit.zok nizk --pin circuit.pin --vin circuit.vin'
@@ -48,12 +50,14 @@ class CirC:
         cmd = f'{self.circ_path.joinpath("target/release/examples/unlearning")} circuit.zok snark --pin circuit.pin --vin circuit.vin'
         stdout = self.run(cmd, working_dir)
         working_dir.joinpath('circ.log.txt').write_text(stdout)
-        # results = {
-        #     'setup' : int(re.findall(r'\[\+\] Setup total (\d+) ms', stdout).pop()),
-        #     'prove' : int(re.findall(r'\[\+\] Prove\n    took (\d+) ms', stdout).pop()),
-        #     'verify' : int(re.findall(r'\[\+\] Verify\n    took (\d+) ms', stdout).pop()),
-        #     'r1cs' : int(re.findall(r'- final R1CS size: (\d+)', stdout).pop())
-        # }
+        results = {
+            'setup' : int(re.findall(r'\[\+\] Setup total (\d+) ms', stdout).pop()),
+            'prove' : int(re.findall(r'\[\+\] Prove\n    took (\d+) ms', stdout).pop()),
+            'verify' : int(re.findall(r'\[\+\] Verify\n    took (\d+) ms', stdout).pop()),
+            'r1cs' : int(re.findall(r'- final R1CS size: (\d+)', stdout).pop())
+        }
+        log.info(results)
+        return results
         # working_dir.joinpath('circ.json').write_text(json.dumps(results, indent=4))
 
     # def zk(self, working_dir, params):

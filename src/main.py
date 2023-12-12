@@ -15,19 +15,11 @@ import shutil
 app = Flask(__name__)
 CORS(app)
 
-perm_sisa = SISA()
-X, Y, scaler = Dataset.from_pmlb_shard('analcatdata_creditscore')
-perm_sisa.train(X, Y)
-
-sisa = deepcopy(perm_sisa)
-
-global_proof_params = []
-
 output_dir = Path("/root/verifiable-unlearning/outputs")
 working_dir = setup_working_dir(output_dir, str(uuid.uuid4()), overwrite=False)
 proof_config = {
     "circ_path": Path('/root/circ'),
-    "proof_system": "nizk",
+    "proof_system": "snark",
     "circuit_dir": Path('/root/verifiable-unlearning/templates'),
     "epochs": 1,
     "lr": 0.01,
@@ -39,6 +31,13 @@ proof_config = {
     "unlearining_lr": 0.01,
     "working_dir": working_dir,
 }
+
+sisa = SISA(proof_config)
+X, Y, scaler = Dataset.from_pmlb_shard('analcatdata_creditscore')
+sisa.train(X, Y)
+
+global_proof_params = []
+
 
 @app.route('/classify')
 @cross_origin()
@@ -70,8 +69,17 @@ def unlearn():
     
     proof_params = sisa.unlearn(ids)
 
+    try:
+        shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
+    except:
+        pass
+
+    for proof_param in proof_params:
+        proof_src = proof_param['proof']
+        working_dir.joinpath('circuit.zok').write_text(proof_src)
+        
     global global_proof_params
-    global_proof_params = proof_params
+    global_proof_params += proof_params
 
     return jsonify(proof_params), 200
 
@@ -79,11 +87,30 @@ def unlearn():
 @app.route('/reset', methods=['POST'])
 @cross_origin()
 def reset():
+    global working_dir
+    working_dir = setup_working_dir(output_dir, str(uuid.uuid4()), overwrite=False)
+    proof_config = {
+        "circ_path": Path('/root/circ'),
+        "proof_system": "snark",
+        "circuit_dir": Path('/root/verifiable-unlearning/templates'),
+        "epochs": 1,
+        "lr": 0.01,
+        "classifier": "neural_network_2",
+        "precision": 1e5,
+        "debug": False,
+        "model_seed": 2023,
+        "unlearning_epochs": 1,
+        "unlearining_lr": 0.01,
+        "working_dir": working_dir,
+    }
     global sisa
-    sisa = deepcopy(perm_sisa)
-
+    sisa = SISA(proof_config)
+    X, Y, scaler = Dataset.from_pmlb_shard('analcatdata_creditscore')
+    sisa.train(X, Y)
+    
     global global_proof_params
     global_proof_params = []
+
     return jsonify("Reset successful"), 200
 
 @app.route('/verify')
@@ -94,45 +121,35 @@ def verify():
         global global_proof_params
         for proof_param in global_proof_params:
             params = proof_param['params']
-            proof_src = proof_param['proof']
             try:
-                working_dir.joinpath('circuit.zok').write_text(proof_src)
                 circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
-                shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
                 stdout = circ.spartan_nizk(params, working_dir)
                 return stdout, 200
             except:
-                pass
-
-        return "Verification failed", 400
-
+                return "Verification failed", 400
     else:
         return "Method not allowed", 405
     
-@app.route('/verify_one')
-@cross_origin()
-def verify_one():
-    if request.method == 'GET':
+# @app.route('/verify_one')
+# @cross_origin()
+# def verify_one():
+#     if request.method == 'GET':
 
-        global global_proof_params
-        if len(global_proof_params) == 0:
-            return "Verification Not Available", 400
-        proof_param = global_proof_params[0]
-        params = proof_param['params']
-        proof_src = proof_param['proof']
-        try:
-            working_dir.joinpath('circuit.zok').write_text(proof_src)
-            circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
-            shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
-            stdout = circ.spartan_nizk(params, working_dir)
-            return stdout, 200
-        except:
-            pass
+#         global global_proof_params
+#         if len(global_proof_params) == 0:
+#             return "Verification Not Available", 400
+#         proof_param = global_proof_params[0]
+#         params = proof_param['params']
+#         proof_src = proof_param['proof']
 
-        return "Verification failed", 400
+#         working_dir.joinpath('circuit.zok').write_text(proof_src)
+#         circ = CirC(proof_config['circ_path'], debug=proof_config['debug'])
+#         shutil.copytree('/root/verifiable-unlearning/templates/poseidon', working_dir.joinpath('poseidon'))
+#         stdout = circ.spartan_nizk(params, working_dir)
+#         return stdout, 200
 
-    else:
-        return "Method not allowed", 405
+#     else:
+#         return "Method not allowed", 405
 
 @app.route('/examples')
 @cross_origin()
